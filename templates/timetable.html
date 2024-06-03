@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .course .course-name {
+            visibility: hidden;
+            width: 200px;
+            background-color: black;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .course:hover .course-name {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto mt-8">
+        <div class="flex justify-between"> 
+            <h1 class="text-3xl font-bold mb-4">Timetable <span class="text-red-400">Generator</span></h1>
+            <div class="mb-4">
+                <label for="semester" class="block text-lg font-semibold mb-2">Select Semester:</label>
+                <select id="semester" class="border border-gray-300 rounded p-2">
+                    <option class="text-red-400" value="first_semester">First Semester</option>
+                    <option class="text-red-400" value="second_semester">Second Semester</option>
+                </select>
+            </div>
+        </div>
+        <div id="timetables">
+            <!-- Timetables will be generated here -->
+        </div>
+    </div>
+    <script>
+        const courses = JSON.parse('{{ courses|escapejs }}');
+
+        const levels = ["ND1", "ND2", "HND1", "HND2"];
+        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+        const times = ["8 AM - 9 AM", "9 AM - 10 AM", "10 AM - 11 AM", "11 AM - 12 PM", "12 PM - 1 PM", "1 PM - 2 PM"];
+        const timetableContainer = document.getElementById('timetables');
+        const semesterSelect = document.getElementById('semester');
+
+        function getRandomInt(max) {
+            return Math.floor(Math.random() * max);
+        }
+
+        function generateTimetables() {
+            timetableContainer.innerHTML = ''; // Clear the existing timetables
+            const selectedSemester = semesterSelect.value;
+
+            for (const level of levels) {
+                const levelDiv = document.createElement('div');
+                levelDiv.classList.add('mb-8');
+
+                const levelTitle = document.createElement('h2');
+                levelTitle.classList.add('text-2xl', 'font-bold', 'mb-4');
+                levelTitle.textContent = `${level} Timetable (${selectedSemester.replace('_', ' ')})`;
+                levelDiv.appendChild(levelTitle);
+
+                const table = document.createElement('table');
+                table.classList.add('table-auto', 'w-full', 'border-collapse', 'border', 'border-gray-300');
+
+                // Create table header
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                headerRow.classList.add('bg-red-400');
+                const emptyHeader = document.createElement('th');
+                emptyHeader.classList.add('border', 'border-gray-300', 'p-2');
+                headerRow.appendChild(emptyHeader);
+
+                times.forEach(time => {
+                    const th = document.createElement('th');
+                    th.classList.add('border', 'border-gray-300', 'p-2', 'text-center', 'text-white');
+                    th.textContent = time;
+                    headerRow.appendChild(th);
+                });
+
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                // Create table body
+                const tbody = document.createElement('tbody');
+
+                for (const day of days) {
+                    const dayRow = document.createElement('tr');
+
+                    const dayCell = document.createElement('td');
+                    dayCell.classList.add('border', 'border-gray-300', 'p-2', 'font-bold');
+                    dayCell.textContent = day;
+                    dayRow.appendChild(dayCell);
+
+                    const levelCourses = courses[level][selectedSemester];
+                    const coursesForDay = [];
+                    while (coursesForDay.length < 4) {
+                        const randomCourse = levelCourses[getRandomInt(levelCourses.length)];
+                        if (!coursesForDay.some(course => course.course_code === randomCourse.course_code)) {
+                            coursesForDay.push(randomCourse);
+                        }
+                    }
+
+                    for (let i = 0; i < 6; i++) {
+                        const courseCell = document.createElement('td');
+                        courseCell.classList.add('border', 'border-gray-300', 'p-2', 'relative');
+
+                        if (i === 4) { // Break time
+                            courseCell.classList.add('bg-gray-100', 'text-center', 'font-bold');
+                            courseCell.textContent = "Break";
+                        } else {
+                            const course = (i === 5) 
+                                ? levelCourses[getRandomInt(levelCourses.length)] // Repeat any course or tag as "Practical"
+                                : coursesForDay.shift();
+
+                            if (course) {
+                                const courseDiv = document.createElement('div');
+                                courseDiv.classList.add('course');
+                                courseDiv.textContent = course.course_code;
+
+                                const courseNameDiv = document.createElement('div');
+                                courseNameDiv.classList.add('course-name');
+                                courseNameDiv.textContent = course.course_name;
+
+                                courseDiv.appendChild(courseNameDiv);
+                                courseCell.appendChild(courseDiv);
+                            }
+                        }
+
+                        dayRow.appendChild(courseCell);
+                    }
+
+                    tbody.appendChild(dayRow);
+                }
+
+                table.appendChild(tbody);
+                levelDiv.appendChild(table);
+                timetableContainer.appendChild(levelDiv);
+            }
+        }
+
+        semesterSelect.addEventListener('change', generateTimetables);
+
+        // Initial generation of the timetables
+        generateTimetables();
+    </script>
+</body>
+</html>
